@@ -6,6 +6,9 @@ import { env } from "./config/env.js";
 import { connectDB } from "./config/db.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import authRoutes from "./routes/auth.routes.js";
+import resumeRoutes from "./routes/resume.routes.js";
+import onboardingRoutes from "./routes/onboarding.routes.js";
+import profileRoutes from "./routes/profile.routes.js";
 
 const app = new Hono();
 
@@ -30,6 +33,9 @@ app.get("/", (c) => {
 
 // Routes
 app.route("/api/auth", authRoutes);
+app.route("/api/resume", resumeRoutes);
+app.route("/api/onboarding", onboardingRoutes);
+app.route("/api/profile", profileRoutes);
 
 // Start server
 async function main() {
