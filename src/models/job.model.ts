@@ -21,7 +21,7 @@ export interface IJob {
   postedDate: Date;
   expiresAt: Date | null;
   employerUserId: mongoose.Types.ObjectId | null;
-  jobPostingId: mongoose.Types.ObjectId | null;
+  postingStatus: "draft" | "active" | "paused" | "closed";
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -60,10 +60,10 @@ const jobSchema = new Schema<IJob>(
     postedDate: { type: Date, required: true },
     expiresAt: { type: Date, default: null },
     employerUserId: { type: Schema.Types.ObjectId, ref: "User", default: null },
-    jobPostingId: {
-      type: Schema.Types.ObjectId,
-      ref: "JobPosting",
-      default: null,
+    postingStatus: {
+      type: String,
+      enum: ["draft", "active", "paused", "closed"],
+      default: "draft",
     },
     isActive: { type: Boolean, default: true },
   },
