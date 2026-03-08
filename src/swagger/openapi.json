@@ -1,0 +1,1323 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Vocation API",
+    "version": "1.0.0",
+    "description": "Job matching and application management platform. Features authentication, user profiles, job discovery with personalized matching, application tracking, dashboards, and employer tools."
+  },
+  "servers": [
+    { "url": "http://localhost:3000", "description": "Local development" }
+  ],
+  "tags": [
+    { "name": "Auth", "description": "User registration, login, and session management" },
+    { "name": "Resume", "description": "Resume file upload and parsing" },
+    { "name": "Onboarding", "description": "Onboarding completion" },
+    { "name": "Profile", "description": "User profile management (resume data, work style, career preferences, portfolio links)" },
+    { "name": "Jobs", "description": "Job search, filtering, and personalized discovery" },
+    { "name": "Applications", "description": "Application lifecycle management for job seekers" },
+    { "name": "Dashboard", "description": "Aggregated stats and insights" },
+    { "name": "Company", "description": "Employer company profile management" },
+    { "name": "Employer Jobs", "description": "Employer job posting management" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": { "type": "string", "example": "VALIDATION_ERROR" },
+              "message": { "type": "string", "example": "Human-readable message" },
+              "details": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "field": { "type": "string" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string", "example": "Jane Doe" },
+          "email": { "type": "string", "format": "email", "example": "jane@example.com" },
+          "avatar": { "type": "string", "nullable": true },
+          "onboardingComplete": { "type": "boolean" },
+          "roles": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["job_seeker", "employer"] }
+          },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "user": { "$ref": "#/components/schemas/User" },
+          "token": { "type": "string", "example": "eyJhbGciOiJIUzI1NiIs..." }
+        }
+      },
+      "Education": {
+        "type": "object",
+        "properties": {
+          "institution": { "type": "string", "example": "MIT" },
+          "degree": { "type": "string", "example": "B.S." },
+          "field": { "type": "string", "example": "Computer Science" },
+          "year": { "type": "string", "example": "2024" }
+        },
+        "required": ["institution", "degree", "field", "year"]
+      },
+      "Experience": {
+        "type": "object",
+        "properties": {
+          "company": { "type": "string", "example": "Acme" },
+          "role": { "type": "string", "example": "Engineer" },
+          "duration": { "type": "string", "example": "2 years" },
+          "description": { "type": "string", "example": "Built apps." }
+        },
+        "required": ["company", "role", "duration", "description"]
+      },
+      "ResumeData": {
+        "type": "object",
+        "properties": {
+          "skills": { "type": "array", "items": { "type": "string" } },
+          "education": { "type": "array", "items": { "$ref": "#/components/schemas/Education" } },
+          "experience": { "type": "array", "items": { "$ref": "#/components/schemas/Experience" } },
+          "resumeFileUrl": { "type": "string", "nullable": true }
+        }
+      },
+      "HolisticProfile": {
+        "type": "object",
+        "properties": {
+          "workStyle": {
+            "type": "object",
+            "properties": {
+              "collaboration": { "type": "integer", "minimum": 1, "maximum": 5 },
+              "structure": { "type": "integer", "minimum": 1, "maximum": 5 },
+              "riskTolerance": { "type": "integer", "minimum": 1, "maximum": 5 }
+            }
+          },
+          "passions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["Gaming", "Writing", "Hiking", "Design", "Technology", "Education", "Music", "Sports", "Photography", "Cooking", "Travel", "Art", "Science", "Finance", "Health & Wellness", "Social Impact", "Film & Media", "Robotics", "Environment", "Fashion"]
+            }
+          }
+        }
+      },
+      "CareerPreferences": {
+        "type": "object",
+        "properties": {
+          "targetRoles": { "type": "array", "items": { "type": "string" } },
+          "preferredIndustries": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["Technology", "Healthcare", "Finance", "Education", "Entertainment", "E-commerce", "Manufacturing", "Consulting", "Media", "Gaming", "Cybersecurity", "AI & Machine Learning", "Climate Tech", "SaaS", "Fintech"]
+            }
+          },
+          "workArrangement": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["remote", "hybrid", "onsite"] }
+          },
+          "employmentType": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["full-time", "contract", "internship", "part-time"] }
+          },
+          "companySize": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["startup", "small", "medium", "large", "enterprise"] }
+          },
+          "salaryMin": { "type": "integer", "minimum": 0 },
+          "salaryMax": { "type": "integer", "minimum": 0 },
+          "willingToRelocate": { "type": "boolean" },
+          "availableToStart": { "type": "string", "example": "Immediately" }
+        }
+      },
+      "PortfolioLinks": {
+        "type": "object",
+        "properties": {
+          "linkedin": { "type": "string", "format": "uri", "nullable": true },
+          "github": { "type": "string", "format": "uri", "nullable": true },
+          "portfolio": { "type": "string", "format": "uri", "nullable": true },
+          "design": { "type": "string", "format": "uri", "nullable": true },
+          "blog": { "type": "string", "format": "uri", "nullable": true },
+          "other": { "type": "string", "format": "uri", "nullable": true }
+        }
+      },
+      "FullProfile": {
+        "type": "object",
+        "properties": {
+          "resumeData": { "$ref": "#/components/schemas/ResumeData" },
+          "holisticProfile": { "$ref": "#/components/schemas/HolisticProfile" },
+          "careerPreferences": { "$ref": "#/components/schemas/CareerPreferences" },
+          "portfolioLinks": { "$ref": "#/components/schemas/PortfolioLinks" }
+        }
+      },
+      "Coordinates": {
+        "type": "object",
+        "properties": {
+          "lat": { "type": "number", "example": 37.7749 },
+          "lng": { "type": "number", "example": -122.4194 }
+        }
+      },
+      "Job": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string", "example": "Senior Frontend Engineer" },
+          "company": { "type": "string", "example": "Vercel" },
+          "companyLogo": { "type": "string", "nullable": true },
+          "description": { "type": "string" },
+          "location": { "type": "string", "example": "San Francisco, CA" },
+          "coordinates": { "$ref": "#/components/schemas/Coordinates" },
+          "workArrangement": { "type": "string", "enum": ["remote", "hybrid", "onsite"] },
+          "employmentType": { "type": "string", "enum": ["full-time", "contract", "internship", "part-time"] },
+          "companySize": { "type": "string", "enum": ["startup", "small", "medium", "large", "enterprise"] },
+          "industry": { "type": "string" },
+          "skills": { "type": "array", "items": { "type": "string" } },
+          "salaryRange": { "type": "string", "nullable": true, "example": "$180k – $250k" },
+          "applyUrl": { "type": "string", "format": "uri" },
+          "matchScore": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "matchReason": { "type": "string" },
+          "postedDate": { "type": "string", "format": "date-time" }
+        }
+      },
+      "JobSummary": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "company": { "type": "string" },
+          "companyLogo": { "type": "string", "nullable": true },
+          "location": { "type": "string" },
+          "workArrangement": { "type": "string" },
+          "salaryRange": { "type": "string", "nullable": true }
+        }
+      },
+      "StatusHistoryEntry": {
+        "type": "object",
+        "properties": {
+          "from": { "type": "string", "nullable": true },
+          "to": { "type": "string" },
+          "changedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Application": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "type": "string", "enum": ["saved", "applied", "interviewing", "offer", "rejected"] },
+          "notes": { "type": "string", "nullable": true },
+          "appliedAt": { "type": "string", "format": "date-time" },
+          "statusHistory": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/StatusHistoryEntry" }
+          },
+          "job": { "$ref": "#/components/schemas/JobSummary" }
+        }
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer" },
+          "page": { "type": "integer" },
+          "limit": { "type": "integer" },
+          "totalPages": { "type": "integer" }
+        }
+      },
+      "CompanyProfile": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "companyName": { "type": "string", "example": "Acme Inc" },
+          "industry": { "type": "string" },
+          "companySize": { "type": "string", "enum": ["startup", "small", "medium", "large", "enterprise"] },
+          "description": { "type": "string" },
+          "logoUrl": { "type": "string", "nullable": true },
+          "websiteUrl": { "type": "string", "format": "uri" },
+          "location": { "type": "string" },
+          "foundedYear": { "type": "integer" },
+          "employeeCount": { "type": "integer" },
+          "benefits": { "type": "array", "items": { "type": "string" } },
+          "techStack": { "type": "array", "items": { "type": "string" } },
+          "socialLinks": {
+            "type": "object",
+            "properties": {
+              "linkedin": { "type": "string", "format": "uri" },
+              "twitter": { "type": "string", "format": "uri" },
+              "github": { "type": "string", "format": "uri" }
+            }
+          },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "JobPosting": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "company": { "type": "string" },
+          "companyLogo": { "type": "string", "nullable": true },
+          "description": { "type": "string" },
+          "location": { "type": "string" },
+          "latitude": { "type": "number", "nullable": true },
+          "longitude": { "type": "number", "nullable": true },
+          "workArrangement": { "type": "string", "enum": ["remote", "hybrid", "onsite"] },
+          "employmentType": { "type": "string", "enum": ["full-time", "contract", "internship", "part-time"] },
+          "companySize": { "type": "string", "enum": ["startup", "small", "medium", "large", "enterprise"] },
+          "industry": { "type": "string" },
+          "skills": { "type": "array", "items": { "type": "string" } },
+          "salaryRange": { "type": "string", "nullable": true },
+          "salaryMin": { "type": "number", "nullable": true },
+          "salaryMax": { "type": "number", "nullable": true },
+          "applyUrl": { "type": "string", "format": "uri" },
+          "postingStatus": { "type": "string", "enum": ["draft", "active", "paused", "closed"] },
+          "postedDate": { "type": "string", "format": "date-time" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Dashboard": {
+        "type": "object",
+        "properties": {
+          "stats": {
+            "type": "object",
+            "properties": {
+              "totalApplications": { "type": "integer" },
+              "statusCounts": {
+                "type": "object",
+                "properties": {
+                  "saved": { "type": "integer" },
+                  "applied": { "type": "integer" },
+                  "interviewing": { "type": "integer" },
+                  "offer": { "type": "integer" },
+                  "rejected": { "type": "integer" }
+                }
+              },
+              "totalActiveJobs": { "type": "integer" }
+            }
+          },
+          "profileCompletion": {
+            "type": "object",
+            "properties": {
+              "percentage": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "sections": {
+                "type": "object",
+                "properties": {
+                  "resumeData": { "type": "boolean" },
+                  "workStyle": { "type": "boolean" },
+                  "careerPreferences": { "type": "boolean" },
+                  "portfolioLinks": { "type": "boolean" }
+                }
+              }
+            }
+          },
+          "recentApplications": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "status": { "type": "string" },
+                "appliedAt": { "type": "string", "format": "date-time" },
+                "updatedAt": { "type": "string", "format": "date-time" },
+                "job": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "title": { "type": "string" },
+                    "company": { "type": "string" },
+                    "companyLogo": { "type": "string", "nullable": true }
+                  }
+                }
+              }
+            }
+          },
+          "recommendedJobs": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Job" }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/auth/signup": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Create account",
+        "operationId": "signup",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "email", "password"],
+                "properties": {
+                  "name": { "type": "string", "maxLength": 100, "example": "Jane Doe" },
+                  "email": { "type": "string", "format": "email", "example": "jane@example.com" },
+                  "password": { "type": "string", "minLength": 6, "example": "securePass123" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Account created",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResponse" } } }
+          },
+          "400": { "description": "Validation failed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "409": { "description": "Email already registered", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Sign in",
+        "operationId": "login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Signed in",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResponse" } } }
+          },
+          "401": { "description": "Invalid email or password", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Invalidate session",
+        "operationId": "logout",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Logged out",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean", "example": true } } } } }
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Get current user",
+        "operationId": "getMe",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Current user",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "user": { "$ref": "#/components/schemas/User" } } } } }
+          },
+          "401": { "description": "Token missing, invalid, or expired", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/resume/upload": {
+      "post": {
+        "tags": ["Resume"],
+        "summary": "Upload & parse resume file",
+        "operationId": "uploadResume",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string", "format": "binary", "description": ".pdf, .doc, .docx, .txt — max 10MB" }
+                },
+                "required": ["file"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resume parsed (placeholder)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "skills": { "type": "array", "items": { "type": "string" } },
+                    "education": { "type": "array", "items": { "type": "object" } },
+                    "experience": { "type": "array", "items": { "type": "object" } },
+                    "rawText": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "No file or unsupported type", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "413": { "description": "File exceeds 10MB", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/onboarding/complete": {
+      "post": {
+        "tags": ["Onboarding"],
+        "summary": "Mark onboarding done",
+        "operationId": "completeOnboarding",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Onboarding completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string" },
+                        "onboardingComplete": { "type": "boolean", "example": true }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/profile": {
+      "get": {
+        "tags": ["Profile"],
+        "summary": "Get full profile (all sections)",
+        "operationId": "getProfile",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Full profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FullProfile" } } }
+          }
+        }
+      }
+    },
+    "/api/profile/resume": {
+      "put": {
+        "tags": ["Profile"],
+        "summary": "Upsert resume data",
+        "operationId": "upsertResume",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "skills": { "type": "array", "items": { "type": "string" } },
+                  "education": { "type": "array", "items": { "$ref": "#/components/schemas/Education" } },
+                  "experience": { "type": "array", "items": { "$ref": "#/components/schemas/Experience" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } }
+          }
+        }
+      }
+    },
+    "/api/profile/work-style": {
+      "put": {
+        "tags": ["Profile"],
+        "summary": "Upsert work style & passions",
+        "operationId": "upsertWorkStyle",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workStyle": {
+                    "type": "object",
+                    "properties": {
+                      "collaboration": { "type": "integer", "minimum": 1, "maximum": 5 },
+                      "structure": { "type": "integer", "minimum": 1, "maximum": 5 },
+                      "riskTolerance": { "type": "integer", "minimum": 1, "maximum": 5 }
+                    },
+                    "required": ["collaboration", "structure", "riskTolerance"]
+                  },
+                  "passions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": ["Gaming", "Writing", "Hiking", "Design", "Technology", "Education", "Music", "Sports", "Photography", "Cooking", "Travel", "Art", "Science", "Finance", "Health & Wellness", "Social Impact", "Film & Media", "Robotics", "Environment", "Fashion"]
+                    }
+                  }
+                },
+                "required": ["workStyle", "passions"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } }
+          }
+        }
+      }
+    },
+    "/api/profile/career-preferences": {
+      "put": {
+        "tags": ["Profile"],
+        "summary": "Upsert career preferences",
+        "operationId": "upsertCareerPreferences",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CareerPreferences" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } }
+          }
+        }
+      }
+    },
+    "/api/profile/portfolio-links": {
+      "put": {
+        "tags": ["Profile"],
+        "summary": "Upsert portfolio URLs",
+        "operationId": "upsertPortfolioLinks",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PortfolioLinks" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } }
+          }
+        }
+      }
+    },
+    "/api/jobs": {
+      "get": {
+        "tags": ["Jobs"],
+        "summary": "Search & filter jobs (paginated)",
+        "operationId": "searchJobs",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Keyword search across title, company, description, skills" },
+          { "name": "industry", "in": "query", "schema": { "type": "string" }, "description": "Filter by industry" },
+          { "name": "workArrangement", "in": "query", "schema": { "type": "string", "enum": ["remote", "hybrid", "onsite"] } },
+          { "name": "companySize", "in": "query", "schema": { "type": "string", "enum": ["startup", "small", "medium", "large", "enterprise"] } },
+          { "name": "employmentType", "in": "query", "schema": { "type": "string", "enum": ["full-time", "contract", "internship", "part-time"] } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated job list with match scores",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "jobs": { "type": "array", "items": { "$ref": "#/components/schemas/Job" } }
+                      }
+                    },
+                    { "$ref": "#/components/schemas/Pagination" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs/recommended": {
+      "get": {
+        "tags": ["Jobs"],
+        "summary": "Top N matched jobs for user",
+        "operationId": "getRecommendedJobs",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 4, "maximum": 20 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recommended jobs sorted by match score",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "jobs": { "type": "array", "items": { "$ref": "#/components/schemas/Job" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs/matches": {
+      "get": {
+        "tags": ["Jobs"],
+        "summary": "All jobs sorted by match score",
+        "operationId": "getJobMatches",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "All jobs sorted by match score descending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "jobs": { "type": "array", "items": { "$ref": "#/components/schemas/Job" } }
+                      }
+                    },
+                    { "$ref": "#/components/schemas/Pagination" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs/map": {
+      "get": {
+        "tags": ["Jobs"],
+        "summary": "Jobs with geo-coordinates",
+        "operationId": "getJobsMap",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "bounds", "in": "query", "schema": { "type": "string" }, "description": "Bounding box: swLat,swLng,neLat,neLng" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Jobs with coordinates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "jobs": { "type": "array", "items": { "$ref": "#/components/schemas/Job" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs/{id}": {
+      "get": {
+        "tags": ["Jobs"],
+        "summary": "Single job detail",
+        "operationId": "getJobById",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "MongoDB ObjectId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job detail with match score",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "job": { "$ref": "#/components/schemas/Job" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Job not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/applications": {
+      "post": {
+        "tags": ["Applications"],
+        "summary": "Apply to / save a job",
+        "operationId": "createApplication",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["jobId"],
+                "properties": {
+                  "jobId": { "type": "string", "description": "Must be a valid, active job" },
+                  "status": { "type": "string", "enum": ["saved", "applied"], "default": "saved" },
+                  "notes": { "type": "string", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Application created",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Application" } } }
+          },
+          "404": { "description": "Job not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "409": { "description": "Duplicate application", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      },
+      "get": {
+        "tags": ["Applications"],
+        "summary": "List applications (filterable, paginated)",
+        "operationId": "listApplications",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["saved", "applied", "interviewing", "offer", "rejected"] } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated applications list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "applications": { "type": "array", "items": { "$ref": "#/components/schemas/Application" } }
+                      }
+                    },
+                    { "$ref": "#/components/schemas/Pagination" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/tracker": {
+      "get": {
+        "tags": ["Applications"],
+        "summary": "Kanban-style grouped view",
+        "operationId": "getTracker",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Applications grouped by status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tracker": {
+                      "type": "object",
+                      "properties": {
+                        "saved": { "type": "array", "items": { "$ref": "#/components/schemas/Application" } },
+                        "applied": { "type": "array", "items": { "$ref": "#/components/schemas/Application" } },
+                        "interviewing": { "type": "array", "items": { "$ref": "#/components/schemas/Application" } },
+                        "offer": { "type": "array", "items": { "$ref": "#/components/schemas/Application" } },
+                        "rejected": { "type": "array", "items": { "$ref": "#/components/schemas/Application" } }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/{id}": {
+      "get": {
+        "tags": ["Applications"],
+        "summary": "Single application + job details",
+        "operationId": "getApplicationById",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Application with populated job",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "application": { "$ref": "#/components/schemas/Application" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      },
+      "delete": {
+        "tags": ["Applications"],
+        "summary": "Withdraw / delete application",
+        "operationId": "deleteApplication",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } }
+          },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/applications/{id}/status": {
+      "patch": {
+        "tags": ["Applications"],
+        "summary": "Update status with transition rules",
+        "operationId": "updateApplicationStatus",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                  "status": { "type": "string", "enum": ["saved", "applied", "interviewing", "offer", "rejected"] },
+                  "notes": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated application",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Application" } } }
+          },
+          "400": { "description": "Invalid status transition", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/dashboard": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "Get dashboard data",
+        "operationId": "getDashboard",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Aggregated dashboard data",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Dashboard" } } }
+          }
+        }
+      }
+    },
+    "/api/company": {
+      "post": {
+        "tags": ["Company"],
+        "summary": "Create company profile",
+        "operationId": "createCompany",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["companyName", "industry", "companySize", "description", "location"],
+                "properties": {
+                  "companyName": { "type": "string", "example": "Acme Inc" },
+                  "industry": { "type": "string", "enum": ["Technology", "Healthcare", "Finance", "Education", "Entertainment", "E-commerce", "Manufacturing", "Consulting", "Media", "Gaming", "Cybersecurity", "AI & Machine Learning", "Climate Tech", "SaaS", "Fintech"] },
+                  "companySize": { "type": "string", "enum": ["startup", "small", "medium", "large", "enterprise"] },
+                  "description": { "type": "string" },
+                  "logoUrl": { "type": "string", "format": "uri", "nullable": true },
+                  "websiteUrl": { "type": "string", "format": "uri" },
+                  "location": { "type": "string" },
+                  "foundedYear": { "type": "integer" },
+                  "employeeCount": { "type": "integer" },
+                  "benefits": { "type": "array", "items": { "type": "string" } },
+                  "techStack": { "type": "array", "items": { "type": "string" } },
+                  "socialLinks": {
+                    "type": "object",
+                    "properties": {
+                      "linkedin": { "type": "string", "format": "uri" },
+                      "twitter": { "type": "string", "format": "uri" },
+                      "github": { "type": "string", "format": "uri" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Company profile created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "companyProfile": { "$ref": "#/components/schemas/CompanyProfile" } }
+                }
+              }
+            }
+          },
+          "409": { "description": "Profile already exists", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      },
+      "get": {
+        "tags": ["Company"],
+        "summary": "Get company profile",
+        "operationId": "getCompany",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Company profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "companyProfile": { "$ref": "#/components/schemas/CompanyProfile" } }
+                }
+              }
+            }
+          },
+          "404": { "description": "No profile found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      },
+      "put": {
+        "tags": ["Company"],
+        "summary": "Update company profile",
+        "operationId": "updateCompany",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "companyName": { "type": "string" },
+                  "industry": { "type": "string" },
+                  "companySize": { "type": "string", "enum": ["startup", "small", "medium", "large", "enterprise"] },
+                  "description": { "type": "string" },
+                  "logoUrl": { "type": "string", "format": "uri", "nullable": true },
+                  "websiteUrl": { "type": "string", "format": "uri" },
+                  "location": { "type": "string" },
+                  "foundedYear": { "type": "integer" },
+                  "employeeCount": { "type": "integer" },
+                  "benefits": { "type": "array", "items": { "type": "string" } },
+                  "techStack": { "type": "array", "items": { "type": "string" } },
+                  "socialLinks": {
+                    "type": "object",
+                    "properties": {
+                      "linkedin": { "type": "string", "format": "uri" },
+                      "twitter": { "type": "string", "format": "uri" },
+                      "github": { "type": "string", "format": "uri" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated company profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "companyProfile": { "$ref": "#/components/schemas/CompanyProfile" } }
+                }
+              }
+            }
+          },
+          "404": { "description": "No profile found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/employer/jobs": {
+      "post": {
+        "tags": ["Employer Jobs"],
+        "summary": "Create a job posting (draft)",
+        "operationId": "createJobPosting",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title", "description", "location", "workArrangement", "employmentType", "companySize", "industry", "applyUrl"],
+                "properties": {
+                  "title": { "type": "string", "example": "Senior Frontend Engineer" },
+                  "description": { "type": "string" },
+                  "location": { "type": "string", "example": "San Francisco, CA" },
+                  "latitude": { "type": "number" },
+                  "longitude": { "type": "number" },
+                  "workArrangement": { "type": "string", "enum": ["remote", "hybrid", "onsite"] },
+                  "employmentType": { "type": "string", "enum": ["full-time", "contract", "internship", "part-time"] },
+                  "companySize": { "type": "string", "enum": ["startup", "small", "medium", "large", "enterprise"] },
+                  "industry": { "type": "string" },
+                  "skills": { "type": "array", "items": { "type": "string" } },
+                  "salaryRange": { "type": "string" },
+                  "salaryMin": { "type": "number" },
+                  "salaryMax": { "type": "number" },
+                  "applyUrl": { "type": "string", "format": "uri" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Job posting created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "jobPosting": { "$ref": "#/components/schemas/JobPosting" } }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["Employer Jobs"],
+        "summary": "List employer's postings",
+        "operationId": "listJobPostings",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["draft", "active", "paused", "closed"] } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of employer's job postings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "jobPostings": { "type": "array", "items": { "$ref": "#/components/schemas/JobPosting" } }
+                      }
+                    },
+                    { "$ref": "#/components/schemas/Pagination" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/employer/jobs/{id}": {
+      "get": {
+        "tags": ["Employer Jobs"],
+        "summary": "Single posting detail",
+        "operationId": "getJobPosting",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job posting detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "jobPosting": { "$ref": "#/components/schemas/JobPosting" } }
+                }
+              }
+            }
+          },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      },
+      "put": {
+        "tags": ["Employer Jobs"],
+        "summary": "Update posting",
+        "operationId": "updateJobPosting",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "description": { "type": "string" },
+                  "location": { "type": "string" },
+                  "latitude": { "type": "number" },
+                  "longitude": { "type": "number" },
+                  "workArrangement": { "type": "string", "enum": ["remote", "hybrid", "onsite"] },
+                  "employmentType": { "type": "string", "enum": ["full-time", "contract", "internship", "part-time"] },
+                  "companySize": { "type": "string", "enum": ["startup", "small", "medium", "large", "enterprise"] },
+                  "industry": { "type": "string" },
+                  "skills": { "type": "array", "items": { "type": "string" } },
+                  "salaryRange": { "type": "string" },
+                  "salaryMin": { "type": "number" },
+                  "salaryMax": { "type": "number" },
+                  "applyUrl": { "type": "string", "format": "uri" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated posting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "jobPosting": { "$ref": "#/components/schemas/JobPosting" } }
+                }
+              }
+            }
+          },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      },
+      "delete": {
+        "tags": ["Employer Jobs"],
+        "summary": "Delete posting",
+        "operationId": "deleteJobPosting",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } }
+          },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/employer/jobs/{id}/status": {
+      "patch": {
+        "tags": ["Employer Jobs"],
+        "summary": "Change posting status",
+        "operationId": "updatePostingStatus",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                  "status": { "type": "string", "enum": ["draft", "active", "paused", "closed"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "jobPosting": { "$ref": "#/components/schemas/JobPosting" } }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid status transition", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    }
+  }
+}

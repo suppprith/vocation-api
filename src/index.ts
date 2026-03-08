@@ -14,6 +14,7 @@ import applicationsRoutes from "./routes/applications.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import companyRoutes from "./routes/company.routes.js";
 import employerJobsRoutes from "./routes/employer-jobs.routes.js";
+import swaggerRoutes from "./routes/swagger.routes.js";
 
 const app = new Hono();
 
@@ -46,6 +47,7 @@ app.route("/api/applications", applicationsRoutes);
 app.route("/api/dashboard", dashboardRoutes);
 app.route("/api/company", companyRoutes);
 app.route("/api/employer/jobs", employerJobsRoutes);
+app.route("/api/docs", swaggerRoutes);
 
 // Start server
 async function main() {
